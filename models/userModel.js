@@ -26,7 +26,21 @@ const userSchema = new mongoose.Schema(
 
     passwordHash: {
       type: String,
-      required: true,
+      required: false,
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    profile_picture: {
+      type: String,
+    },
+    name: {
+      type: String,
+    },
+    provider: {
+      type: String,
     },
 
     filledForm: {

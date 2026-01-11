@@ -6,15 +6,53 @@ const PORT = process.env.PORT || 3000;
 const connectDB = require("./config/dbConn");
 const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
+const passport = require("./config/passport");
 
 connectDB();
 
 app.use(express.json());
+app.use(passport.initialize());
 
 app.use("/", express.static(path.join(__dirname, "./public")));
 
 app.use("/", require("./routes/root"));
 app.use("/users", userRoutes);
+// convenience redirect in case someone hits /auth/google directly
+app.get("/auth/google", (req, res) => res.redirect("/users/auth/google"));
+// Handle top-level callback (if Google console uses /auth/google/callback)
+app.get("/auth/google/callback", (req, res, next) => {
+  passport.authenticate("google", { session: false }, (err, user, info) => {
+    console.error("Top-level Google callback - auth result:", {
+      err: err && err.message,
+      info,
+    });
+    if (err)
+      return res
+        .status(500)
+        .json({ message: "OAuth error", error: err && err.message, info });
+    if (!user) return res.redirect("/");
+    const secret = process.env.JWT_SECRET;
+    const expiresIn = process.env.JWT_EXPIRES_IN || "30d";
+    if (!secret)
+      return res.status(500).json({ message: "JWT_SECRET not configured" });
+    try {
+      const jwt = require("jsonwebtoken");
+      const token = jwt.sign({ id: user._id }, secret, { expiresIn });
+      res.json({
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+        },
+      });
+    } catch (signErr) {
+      console.error("JWT sign error:", signErr);
+      res.status(500).json({ message: "Token generation failed" });
+    }
+  })(req, res, next);
+});
 app.use((req, res) => {
   res.status(404);
   if (req.accepts("html")) {
