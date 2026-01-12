@@ -58,6 +58,50 @@ app.get("/auth/google/callback", (req, res, next) => {
     }
   })(req, res, next);
 });
+app.get("/auth/discord", (req, res) => res.redirect("/users/auth/discord"));
+app.get("/auth/discord/callback", (req, res, next) => {
+  passport.authenticate("discord", { session: false }, (err, user, info) => {
+    console.error("Top-level Discord callback - auth result:", {
+      err: err && err.message,
+      info,
+    });
+    if (err)
+      return res
+        .status(500)
+        .json({ message: "OAuth error", error: err && err.message, info });
+    if (!user) return res.redirect("/");
+    const secret = process.env.JWT_SECRET;
+    const expiresIn = process.env.JWT_EXPIRES_IN || "30d";
+    if (!secret)
+      return res.status(500).json({ message: "JWT_SECRET not configured" });
+    try {
+      const jwt = require("jsonwebtoken");
+      const token = jwt.sign({ id: user._id }, secret, { expiresIn });
+      const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
+      if (redirectTarget) {
+        const sep = redirectTarget.includes("?") ? "&" : "?";
+        return res.redirect(`${redirectTarget}${sep}token=${token}`);
+      }
+      res.json({
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+        },
+      });
+    } catch (signErr) {
+      console.error("JWT sign error:", signErr);
+      res.status(500).json({ message: "Token generation failed" });
+    }
+  })(req, res, next);
+});
+app.get("/auth/github", (req, res) => res.redirect("/users/auth/github"));
+app.get("/auth/github/callback", (req, res) =>
+  res.redirect("/auth/github/callback")
+);
+
 app.use((req, res) => {
   res.status(404);
   if (req.accepts("html")) {
