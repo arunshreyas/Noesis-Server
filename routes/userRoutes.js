@@ -44,10 +44,49 @@ router.get(
     session: false,
   })
 );
+router.get(
+  "/auth/github",
+  passport.authenticate("github", {
+    scope: ["user:email"],
+    session: false,
+  })
+);
 
 router.get("/auth/google/callback", (req, res, next) => {
   passport.authenticate("google", { session: false }, (err, user, info) => {
     console.error("Google callback - auth result:", {
+      err: err && err.message,
+      info,
+    });
+    if (err)
+      return res
+        .status(500)
+        .json({ message: "OAuth error", error: err && err.message, info });
+    if (!user) return res.redirect("/");
+    const secret = process.env.JWT_SECRET;
+    const expiresIn = process.env.JWT_EXPIRES_IN || "30d";
+    if (!secret)
+      return res.status(500).json({ message: "JWT_SECRET not configured" });
+    try {
+      const token = jwt.sign({ id: user._id }, secret, { expiresIn });
+      res.json({
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+        },
+      });
+    } catch (signErr) {
+      console.error("JWT sign error:", signErr);
+      res.status(500).json({ message: "Token generation failed" });
+    }
+  })(req, res, next);
+});
+router.get("/auth/github/callback", (req, res, next) => {
+  passport.authenticate("github", { session: false }, (err, user, info) => {
+    console.error("GitHub callback - auth result:", {
       err: err && err.message,
       info,
     });
