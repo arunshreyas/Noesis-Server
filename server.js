@@ -38,6 +38,11 @@ app.get("/auth/google/callback", (req, res, next) => {
     try {
       const jwt = require("jsonwebtoken");
       const token = jwt.sign({ id: user._id }, secret, { expiresIn });
+      const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
+      if (redirectTarget) {
+        const sep = redirectTarget.includes("?") ? "&" : "?";
+        return res.redirect(`${redirectTarget}${sep}token=${token}`);
+      }
       res.json({
         token,
         user: {

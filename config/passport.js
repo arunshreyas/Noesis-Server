@@ -3,6 +3,7 @@ require("dotenv").config();
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const GitHubStrategy = require("passport-github2").Strategy;
+const DiscordStrategy = require("passport-discord").Strategy;
 const User = require("../models/userModel");
 
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || "http://localhost:3000";
@@ -109,6 +110,61 @@ passport.use(
         } else {
           if (!user.githubId && profile.id) {
             user.githubId = profile.id;
+            await user.save();
+          }
+        }
+        return done(null, user);
+      } catch (err) {
+        return done(err, null);
+      }
+    }
+  )
+);
+
+passport.use(
+  new DiscordStrategy(
+    {
+      clientID: process.env.DISCORD_CLIENT_ID,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+      callbackURL:
+        process.env.DISCORD_REDIRECT_URI ||
+        `${SERVER_BASE_URL}/users/auth/discord/callback`,
+      scope: ["identify", "email"],
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.email;
+        let user = null;
+        if (profile.id) {
+          user = await User.findOne({ discordId: profile.id });
+        }
+        if (!user && email) {
+          user = await User.findOne({ email });
+        }
+        if (!user) {
+          const base = (
+            profile.username || (email ? email.split("@")[0] : "user")
+          )
+            .toString()
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "_");
+          const safeUsername = `${base}_${Math.random()
+            .toString(36)
+            .slice(2, 6)}`;
+          user = await User.create({
+            discordId: profile.id,
+            email,
+            username: safeUsername,
+            passwordHash: "",
+            name: profile.username,
+            profile_picture: profile.avatar
+              ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
+              : null,
+            provider: "discord",
+          });
+        } else {
+          if (!user.discordId && profile.id) {
+            user.discordId = profile.id;
             await user.save();
           }
         }
