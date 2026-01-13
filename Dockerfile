@@ -4,11 +4,12 @@ FROM node:18-alpine
 WORKDIR /usr/src/app
 
 # Install app dependencies
+# Use .dockerignore to exclude unnecessary files like node_modules from the host
 COPY package*.json ./
-RUN npm install --production
+RUN npm install --omit=dev
 
-# Copy app sources
-COPY . .
+# Copy app sources and relevant config files
+COPY . ./
 
 # Allow the port to be set by environment, default to 3000
 ENV PORT=3000

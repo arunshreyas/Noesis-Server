@@ -1,5 +1,7 @@
 const OnboardingForm = require("../models/onBoardingForm");
 const User = require("../models/userModel");
+const Habit = require("../models/habitModel");
+const { generateHabits } = require("../services/openRouterService");
 const asyncHandler = require("express-async-handler");
 const path = require("path");
 const fs = require("fs");
@@ -53,7 +55,41 @@ const submitOnboardingForm = asyncHandler(async (req, res) => {
     if (form) {
       // Update user's filledForm status to true
       await User.findByIdAndUpdate(userId, { filledForm: true });
-      res.status(201).json({ message: "Onboarding form submitted successfully" });
+      
+      // Generate AI habits using OpenRouter
+      try {
+        const generatedHabits = await generateHabits({
+          role: form.role,
+          dailyFreeTime: form.dailyFreeTime,
+          currentHabits: form.currentHabits,
+          focusArea: form.focusArea,
+          consistencyLevel: form.consistencyLevel,
+        });
+
+        // Save habits to database
+        const habitsToSave = generatedHabits.map((habit) => ({
+          userId,
+          title: habit.title,
+          description: habit.description,
+          schedule: habit.schedule,
+          points: 10,
+          isActive: true,
+        }));
+
+        await Habit.insertMany(habitsToSave);
+
+        res.status(201).json({
+          message: "Onboarding form submitted successfully",
+          habits: habitsToSave,
+        });
+      } catch (error) {
+        console.error("Error generating habits:", error);
+        // Still return success even if habit generation fails
+        res.status(201).json({
+          message: "Onboarding form submitted successfully",
+          warning: "Habit generation failed, but form was saved",
+        });
+      }
     } else {
       res.status(400);
       throw new Error("Invalid form data");

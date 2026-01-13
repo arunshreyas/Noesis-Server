@@ -7,6 +7,8 @@ const connectDB = require("./config/dbConn");
 const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
 const onBoardingFormRoutes = require("./routes/onBoardingFormRoutes");
+const habitRoutes = require("./routes/habitRoutes");
+const plannerRoutes = require("./routes/plannerRoutes");
 const passport = require("./config/passport");
 
 connectDB();
@@ -19,11 +21,14 @@ app.use("/", express.static(path.join(__dirname, "./public")));
 app.use("/", require("./routes/root"));
 app.use("/users", userRoutes);
 app.use("/users", onBoardingFormRoutes);
+app.use("/habits", habitRoutes);
+app.use("/planner", plannerRoutes);
 // convenience redirect in case someone hits /auth/google directly
 app.get("/auth/google", (req, res) => res.redirect("/users/auth/google"));
 // Handle top-level callback (if Google console uses /auth/google/callback)
 app.get("/auth/google/callback", (req, res, next) => {
-  passport.authenticate("google", { session: false }, (err, user, info) => {
+  const { awardLoginPoints } = require("./controllers/userController");
+  passport.authenticate("google", { session: false }, async (err, user, info) => {
     console.error("Top-level Google callback - auth result:", {
       err: err && err.message,
       info,
@@ -38,6 +43,9 @@ app.get("/auth/google/callback", (req, res, next) => {
     if (!secret)
       return res.status(500).json({ message: "JWT_SECRET not configured" });
     try {
+      // Award login points
+      const { points, level } = await awardLoginPoints(user._id);
+      
       const jwt = require("jsonwebtoken");
       const token = jwt.sign({ id: user._id }, secret, { expiresIn });
       const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
@@ -52,6 +60,8 @@ app.get("/auth/google/callback", (req, res, next) => {
           email: user.email,
           username: user.username,
           role: user.role,
+          points,
+          level,
         },
       });
     } catch (signErr) {
@@ -62,7 +72,8 @@ app.get("/auth/google/callback", (req, res, next) => {
 });
 app.get("/auth/discord", (req, res) => res.redirect("/users/auth/discord"));
 app.get("/auth/discord/callback", (req, res, next) => {
-  passport.authenticate("discord", { session: false }, (err, user, info) => {
+  const { awardLoginPoints } = require("./controllers/userController");
+  passport.authenticate("discord", { session: false }, async (err, user, info) => {
     console.error("Top-level Discord callback - auth result:", {
       err: err && err.message,
       info,
@@ -77,6 +88,9 @@ app.get("/auth/discord/callback", (req, res, next) => {
     if (!secret)
       return res.status(500).json({ message: "JWT_SECRET not configured" });
     try {
+      // Award login points
+      const { points, level } = await awardLoginPoints(user._id);
+      
       const jwt = require("jsonwebtoken");
       const token = jwt.sign({ id: user._id }, secret, { expiresIn });
       const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
@@ -91,6 +105,8 @@ app.get("/auth/discord/callback", (req, res, next) => {
           email: user.email,
           username: user.username,
           role: user.role,
+          points,
+          level,
         },
       });
     } catch (signErr) {

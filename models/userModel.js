@@ -53,6 +53,17 @@ const userSchema = new mongoose.Schema(
       enum: ["student", "professional", "other"],
       default: "student",
     },
+    points: {
+      type: Number,
+      default: 0,
+    },
+    level: {
+      type: Number,
+      default: 1,
+    },
+    lastLoginDate: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

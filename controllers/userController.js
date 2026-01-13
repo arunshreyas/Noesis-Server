@@ -17,6 +17,39 @@ const generateToken = (id) => {
   return jwt.sign({ id }, secret, { expiresIn });
 };
 
+/**
+ * Award login points if user hasn't logged in today
+ * Returns updated points and level
+ */
+const awardLoginPoints = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) return { points: 0, level: 1 };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
+  const lastLoginDate = lastLogin ? new Date(lastLogin.setHours(0, 0, 0, 0)) : null;
+
+  let updatedPoints = user.points || 0;
+  let updatedLevel = user.level || 1;
+
+  // Award 5 points for daily login if not logged in today
+  if (!lastLoginDate || lastLoginDate.getTime() !== today.getTime()) {
+    updatedPoints += 5;
+    // Calculate level (level up every 100 points)
+    updatedLevel = Math.floor(updatedPoints / 100) + 1;
+
+    await User.findByIdAndUpdate(userId, {
+      points: updatedPoints,
+      level: updatedLevel,
+      lastLoginDate: new Date(),
+    });
+  }
+
+  return { points: updatedPoints, level: updatedLevel };
+};
+
 //fetch users
 const fetchUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-passwordHash");
@@ -37,6 +70,8 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     user: {
       ...user.toObject(),
       profile_picture: user.profile_picture,
+      points: user.points || 0,
+      level: user.level || 1,
     },
   });
 });
@@ -65,11 +100,25 @@ const loginUser = asyncHandler(async (req, res) => {
   }
   const user = await User.findOne({ email });
   if (user && (await bcrypt.compare(password, user.passwordHash))) {
+    // Check if user hasn't logged in today - award login points
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const lastLogin = user.lastLoginDate
+      ? new Date(user.lastLoginDate)
+      : null;
+    const lastLoginDate = lastLogin ? new Date(lastLogin.setHours(0, 0, 0, 0)) : null;
+
+    // Award login points
+    const { points: updatedPoints, level: updatedLevel } = await awardLoginPoints(user._id);
+
     res.json({
       _id: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
+      points: updatedPoints,
+      level: updatedLevel,
       token: generateToken(user._id),
     });
   } else {
@@ -118,4 +167,5 @@ module.exports = {
   getUserById,
   loginUser,
   signupUser,
+  awardLoginPoints,
 };

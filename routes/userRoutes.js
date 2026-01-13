@@ -7,6 +7,7 @@ const {
   getUserById,
   loginUser,
   signupUser,
+  awardLoginPoints,
 } = require("../controllers/userController");
 const {
   submitOnboardingForm,
@@ -70,7 +71,7 @@ router.get("/auth/discord", (req, res, next) => {
 });
 
 router.get("/auth/google/callback", (req, res, next) => {
-  passport.authenticate("google", { session: false }, (err, user, info) => {
+  passport.authenticate("google", { session: false }, async (err, user, info) => {
     console.error("Google callback - auth result:", {
       err: err && err.message,
       info,
@@ -85,6 +86,9 @@ router.get("/auth/google/callback", (req, res, next) => {
     if (!secret)
       return res.status(500).json({ message: "JWT_SECRET not configured" });
     try {
+      // Award login points
+      const { points, level } = await awardLoginPoints(user._id);
+      
       const token = jwt.sign({ id: user._id }, secret, { expiresIn });
       // prefer redirect target from provider state, fall back to env
       const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
@@ -99,6 +103,8 @@ router.get("/auth/google/callback", (req, res, next) => {
           email: user.email,
           username: user.username,
           role: user.role,
+          points,
+          level,
         },
       });
     } catch (signErr) {
@@ -108,7 +114,7 @@ router.get("/auth/google/callback", (req, res, next) => {
   })(req, res, next);
 });
 router.get("/auth/github/callback", (req, res, next) => {
-  passport.authenticate("github", { session: false }, (err, user, info) => {
+  passport.authenticate("github", { session: false }, async (err, user, info) => {
     console.error("GitHub callback - auth result:", {
       err: err && err.message,
       info,
@@ -123,6 +129,9 @@ router.get("/auth/github/callback", (req, res, next) => {
     if (!secret)
       return res.status(500).json({ message: "JWT_SECRET not configured" });
     try {
+      // Award login points
+      const { points, level } = await awardLoginPoints(user._id);
+      
       const token = jwt.sign({ id: user._id }, secret, { expiresIn });
       const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
       if (redirectTarget) {
@@ -136,6 +145,8 @@ router.get("/auth/github/callback", (req, res, next) => {
           email: user.email,
           username: user.username,
           role: user.role,
+          points,
+          level,
         },
       });
     } catch (signErr) {
@@ -145,7 +156,7 @@ router.get("/auth/github/callback", (req, res, next) => {
   })(req, res, next);
 });
 router.get("/auth/discord/callback", (req, res, next) => {
-  passport.authenticate("discord", { session: false }, (err, user, info) => {
+  passport.authenticate("discord", { session: false }, async (err, user, info) => {
     console.error("Discord callback - auth result:", {
       err: err && err.message,
       info,
@@ -160,12 +171,14 @@ router.get("/auth/discord/callback", (req, res, next) => {
     if (!secret)
       return res.status(500).json({ message: "JWT_SECRET not configured" });
     try {
+      // Award login points
+      const { points, level } = await awardLoginPoints(user._id);
+      
       const token = jwt.sign({ id: user._id }, secret, { expiresIn });
       const redirectTarget = req.query.state || process.env.CLIENT_REDIRECT_URI;
       if (redirectTarget) {
         const sep = redirectTarget.includes("?") ? "&" : "?";
-        return;
-        res.redirect(`${redirectTarget}${sep}token=${token}`);
+        return res.redirect(`${redirectTarget}${sep}token=${token}`);
       }
       res.json({
         token,
@@ -174,6 +187,8 @@ router.get("/auth/discord/callback", (req, res, next) => {
           email: user.email,
           username: user.username,
           role: user.role,
+          points,
+          level,
         },
       });
     } catch (signErr) {
