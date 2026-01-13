@@ -58,13 +58,13 @@ const getUserById = asyncHandler(async (req, res) => {
 
 //login
 const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = await User.findOne({ email: req.body.email });
+  const { email, password } = req.body;
   if (!email || !password) {
     res.status(400);
     throw new Error("Please provide email and password");
   }
-  const user = await User.findOne({ email: req.body.email });
-  if (user && (await bcrypt.compare(req.body.password, user.passwordHash))) {
+  const user = await User.findOne({ email });
+  if (user && (await bcrypt.compare(password, user.passwordHash))) {
     res.json({
       _id: user.id,
       email: user.email,

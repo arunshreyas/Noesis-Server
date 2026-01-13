@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 3000;
 const connectDB = require("./config/dbConn");
 const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
+const onBoardingFormRoutes = require("./routes/onBoardingFormRoutes");
 const passport = require("./config/passport");
 
 connectDB();
@@ -17,6 +18,7 @@ app.use("/", express.static(path.join(__dirname, "./public")));
 
 app.use("/", require("./routes/root"));
 app.use("/users", userRoutes);
+app.use("/users", onBoardingFormRoutes);
 // convenience redirect in case someone hits /auth/google directly
 app.get("/auth/google", (req, res) => res.redirect("/users/auth/google"));
 // Handle top-level callback (if Google console uses /auth/google/callback)
@@ -101,6 +103,16 @@ app.get("/auth/github", (req, res) => res.redirect("/users/auth/github"));
 app.get("/auth/github/callback", (req, res) =>
   res.redirect("/auth/github/callback")
 );
+
+// Global error handler middleware
+app.use((err, req, res, next) => {
+  console.error("Error:", err);
+  const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
+  res.status(statusCode).json({
+    message: err.message || "Internal Server Error",
+    error: process.env.NODE_ENV === "production" ? {} : err.stack,
+  });
+});
 
 app.use((req, res) => {
   res.status(404);

@@ -8,6 +8,10 @@ const {
   loginUser,
   signupUser,
 } = require("../controllers/userController");
+const {
+  submitOnboardingForm,
+  fetchOnboardingForm,
+} = require("../controllers/onBoardingController");
 const passport = require("../config/passport");
 const jwt = require("jsonwebtoken");
 const { requireAuth } = require("../middleware/authMiddleware");
@@ -178,6 +182,14 @@ router.get("/auth/discord/callback", (req, res, next) => {
     }
   })(req, res, next);
 });
+// Google / GitHub OAuth end routes
+router.get("/onBoardingForm", (req, res) => {
+  res.send("onBoardingForm route is working");
+});
+
+// Onboarding form routes
+router.post("/onboarding", requireAuth, submitOnboardingForm);
+router.get("/onboarding", requireAuth, fetchOnboardingForm);
 
 router.post("/signup", validateSignup, signupUser);
 router.post("/", validateSignup, signupUser); // alias for backwards-compat
