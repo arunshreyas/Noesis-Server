@@ -6,7 +6,7 @@ const GitHubStrategy = require("passport-github2").Strategy;
 const DiscordStrategy = require("passport-discord").Strategy;
 const User = require("../models/userModel");
 
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || "http://localhost:3000";
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL;
 
 passport.use(
   new GoogleStrategy(
