@@ -37,7 +37,10 @@ app.get("/auth/google/callback", (req, res, next) => {
       return res
         .status(500)
         .json({ message: "OAuth error", error: err && err.message, info });
-    if (!user) return res.redirect("/");
+    if (!user) {
+      console.error("OAuth authentication failed - no user returned");
+      return res.status(401).json({ message: "Authentication failed", info });
+    }
     const secret = process.env.JWT_SECRET;
     const expiresIn = process.env.JWT_EXPIRES_IN || "30d";
     if (!secret)
@@ -82,7 +85,10 @@ app.get("/auth/discord/callback", (req, res, next) => {
       return res
         .status(500)
         .json({ message: "OAuth error", error: err && err.message, info });
-    if (!user) return res.redirect("/");
+    if (!user) {
+      console.error("OAuth authentication failed - no user returned");
+      return res.status(401).json({ message: "Authentication failed", info });
+    }
     const secret = process.env.JWT_SECRET;
     const expiresIn = process.env.JWT_EXPIRES_IN || "30d";
     if (!secret)
