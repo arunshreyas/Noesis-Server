@@ -54,7 +54,9 @@ const submitOnboardingForm = asyncHandler(async (req, res) => {
     
     if (form) {
       // Update user's filledForm status to true
+      console.log("Updating user filledForm status to true for userId:", userId);
       await User.findByIdAndUpdate(userId, { filledForm: true });
+      console.log("User filledForm status updated successfully");
       
       // Generate AI habits using OpenRouter
       try {

@@ -6,7 +6,17 @@ const GitHubStrategy = require("passport-github2").Strategy;
 const DiscordStrategy = require("passport-discord").Strategy;
 const User = require("../models/userModel");
 
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL;
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || "https://noesis-server-sk6o.onrender.com";
+
+// Debug environment variables
+console.log("OAuth Configuration Debug:");
+console.log("SERVER_BASE_URL:", SERVER_BASE_URL);
+console.log("GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "SET" : "MISSING");
+console.log("GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "SET" : "MISSING");
+console.log("GOOGLE_CALLBACK_URL:", process.env.GOOGLE_CALLBACK_URL);
+console.log("DISCORD_CLIENT_ID:", process.env.DISCORD_CLIENT_ID ? "SET" : "MISSING");
+console.log("DISCORD_CLIENT_SECRET:", process.env.DISCORD_CLIENT_SECRET ? "SET" : "MISSING");
+console.log("DISCORD_REDIRECT_URI:", process.env.DISCORD_REDIRECT_URI || `${SERVER_BASE_URL}/users/auth/discord/callback`);
 
 passport.use(
   new GoogleStrategy(
@@ -21,6 +31,13 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log("Google OAuth profile received:", {
+          id: profile.id,
+          displayName: profile.displayName,
+          emails: profile.emails,
+          username: profile.username
+        });
+        
         const email =
           profile.emails && profile.emails[0] && profile.emails[0].value;
         let user = null;
@@ -60,6 +77,7 @@ passport.use(
         }
         return done(null, user);
       } catch (err) {
+        console.error("Google OAuth error:", err);
         return done(err, null);
       }
     }
@@ -133,6 +151,13 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log("Discord OAuth profile received:", {
+          id: profile.id,
+          username: profile.username,
+          email: profile.email,
+          discriminator: profile.discriminator
+        });
+        
         const email = profile.email;
         let user = null;
         if (profile.id) {
@@ -170,6 +195,7 @@ passport.use(
         }
         return done(null, user);
       } catch (err) {
+        console.error("Discord OAuth error:", err);
         return done(err, null);
       }
     }
